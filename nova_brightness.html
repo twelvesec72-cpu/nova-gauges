@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Nova Gauges</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #08080A;
+    color: #DCDCDC;
+    font-family: monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 24px;
+  }
+
+  h1 { color: #5A786E; font-size: 18px; letter-spacing: 3px; font-weight: normal; }
+
+  .gauge-icon {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    border: 3px solid #141416;
+    background: radial-gradient(circle, #060608, #0C0C0E);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .needle {
+    width: 2px; height: 38px;
+    background: linear-gradient(to top, #E6281E, #FF8060);
+    transform-origin: bottom center;
+    transform: rotate(-30deg);
+    border-radius: 1px;
+    position: absolute;
+    bottom: 50%; left: calc(50% - 1px);
+    box-shadow: 0 0 6px rgba(230,40,30,0.5);
+  }
+  .hub {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #3A3A3C, #141416);
+    position: absolute;
+    border: 1px solid #444;
+    z-index: 2;
+  }
+
+  #status {
+    font-size: 13px;
+    color: #5A786E;
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+  #status.connected { color: #4d4; }
+  #status.error { color: #E6281E; }
+
+  .connect-btn {
+    background: #141416;
+    color: #DCDCDC;
+    border: 1px solid #2A2A2E;
+    border-radius: 8px;
+    padding: 14px 36px;
+    font-family: monospace;
+    font-size: 15px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .connect-btn:hover { background: #1E1E22; border-color: #5A786E; }
+  .connect-btn:active { background: #5A786E; color: #000; }
+
+  .brightness-panel {
+    width: 100%;
+    max-width: 340px;
+    background: #0E0E12;
+    border: 1px solid #1E1E22;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .brightness-panel.active { opacity: 1; pointer-events: all; }
+
+  .panel-label {
+    color: #5A786E;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .slider-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .slider-val {
+    font-size: 28px;
+    color: #DCDCDC;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #1E1E22;
+    border-radius: 3px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: #E6281E;
+    box-shadow: 0 0 8px rgba(230,40,30,0.5);
+    cursor: pointer;
+  }
+
+  .presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .preset-btn {
+    background: #141416;
+    border: 1px solid #2A2A2E;
+    border-radius: 8px;
+    color: #DCDCDC;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 12px 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: border-color 0.2s;
+  }
+  .preset-btn span { font-size: 10px; color: #5A786E; }
+  .preset-btn:hover { border-color: #5A786E; }
+  .preset-btn.active { border-color: #E6281E; color: #E6281E; }
+
+  .disc-btn {
+    background: none;
+    border: 1px solid #2A2A2E;
+    border-radius: 8px;
+    color: #5A786E;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 10px;
+    cursor: pointer;
+    width: 100%;
+    letter-spacing: 1px;
+  }
+  .disc-btn:hover { border-color: #E6281E; color: #E6281E; }
+</style>
+</head>
+<body>
+
+<div class="gauge-icon">
+  <div class="needle" id="needleEl"></div>
+  <div class="hub"></div>
+</div>
+
+<h1>NOVA GAUGES</h1>
+<div id="status">tap connect to pair</div>
+
+<button class="connect-btn" id="connectBtn" onclick="connectBLE()">CONNECT</button>
+
+<div class="brightness-panel" id="panel">
+  <div class="panel-label">Brightness</div>
+
+  <div class="slider-wrap">
+    <div class="slider-val" id="sliderVal">37%</div>
+    <input type="range" id="slider" min="1" max="100" value="37"
+      oninput="onSlider(this.value)">
+  </div>
+
+  <div class="panel-label">Presets</div>
+  <div class="presets">
+    <button class="preset-btn" id="p0" onclick="setPreset(15,'p0')">
+      🌙<span>NIGHT</span>
+    </button>
+    <button class="preset-btn active" id="p1" onclick="setPreset(37,'p1')">
+      ◑<span>MEDIUM</span>
+    </button>
+    <button class="preset-btn" id="p2" onclick="setPreset(73,'p2')">
+      ☀<span>DAY</span>
+    </button>
+  </div>
+
+  <button class="disc-btn" onclick="disconnect()">DISCONNECT</button>
+</div>
+
+<script>
+const SVC_UUID  = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+const CHAR_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+
+let gattServer = null;
+let brightChar  = null;
+let sendTimer   = null;
+let pendingVal  = null;
+
+function setStatus(msg, cls='') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls;
+}
+
+function animNeedle(pct) {
+  const deg = -90 + (pct/100)*150;
+  document.getElementById('needleEl').style.transform = `rotate(${deg}deg)`;
+}
+
+async function connectBLE() {
+  if (!navigator.bluetooth) {
+    setStatus('Web Bluetooth not supported — use Chrome on Android', 'error');
+    return;
+  }
+  try {
+    setStatus('scanning...', '');
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'Nova Fuel' }],
+      optionalServices: [SVC_UUID]
+    });
+    setStatus('connecting...', '');
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    gattServer = await device.gatt.connect();
+    const svc  = await gattServer.getPrimaryService(SVC_UUID);
+    brightChar  = await svc.getCharacteristic(CHAR_UUID);
+    setStatus('connected — ' + device.name, 'connected');
+    document.getElementById('connectBtn').textContent = 'PAIRED';
+    document.getElementById('connectBtn').style.borderColor = '#4d4';
+    document.getElementById('panel').classList.add('active');
+    // Send current slider value
+    const v = parseInt(document.getElementById('slider').value);
+    sendBrightness(v);
+    animNeedle(v);
+  } catch(e) {
+    setStatus(e.name === 'NotFoundError' ? 'no gauge found — check it\'s powered' : e.message, 'error');
+  }
+}
+
+function onDisconnect() {
+  gattServer = null; brightChar = null;
+  setStatus('disconnected — tap connect to re-pair', '');
+  document.getElementById('connectBtn').textContent = 'CONNECT';
+  document.getElementById('connectBtn').style.borderColor = '';
+  document.getElementById('panel').classList.remove('active');
+}
+
+async function sendBrightness(val) {
+  if (!brightChar) return;
+  try {
+    await brightChar.writeValue(new Uint8Array([Math.round(val)]));
+  } catch(e) { setStatus('write error: ' + e.message, 'error'); }
+}
+
+// Throttle slider sends to avoid BLE overflow
+function onSlider(val) {
+  val = parseInt(val);
+  document.getElementById('sliderVal').textContent = val + '%';
+  animNeedle(val);
+  // Clear preset highlights
+  ['p0','p1','p2'].forEach(id => document.getElementById(id).classList.remove('active'));
+  pendingVal = val;
+  clearTimeout(sendTimer);
+  sendTimer = setTimeout(() => { sendBrightness(pendingVal); }, 80);
+}
+
+function setPreset(val, btnId) {
+  document.getElementById('slider').value = val;
+  document.getElementById('sliderVal').textContent = val + '%';
+  animNeedle(val);
+  ['p0','p1','p2'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(btnId).classList.add('active');
+  sendBrightness(val);
+}
+
+function disconnect() {
+  if (gattServer) gattServer.disconnect();
+}
+
+// Animate needle on load
+animNeedle(37);
+</script>
+</body>
+</html>
