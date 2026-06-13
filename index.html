@@ -224,7 +224,7 @@ async function connectBLE() {
   try {
     setStatus('scanning...', '');
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'Nova Fuel' }],
+      acceptAllDevices: true,
       optionalServices: [SVC_UUID]
     });
     setStatus('connecting...', '');
